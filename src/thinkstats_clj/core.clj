@@ -30,3 +30,79 @@
                     :2002-fem-resp (resource "2002FemResp.dat.gz"))]
     (map parse-line
          (line-seq (io/reader (GZIPInputStream. (FileInputStream. (io/as-file file-url))))))))
+
+
+(defn mean
+  [xs]
+  (float (/ (reduce + xs)
+            (count xs))))
+
+
+(defn variance
+  [xs & [mu]]
+  (let [mu (when-not mu
+             (mean xs))]
+    (mean (map #(Math/pow (- % mu) 2) xs))))
+
+
+(defn std-dev
+  [xs]
+  (Math/sqrt (variance xs)))
+
+
+(defn hist
+  [xs]
+  (reduce (fn [op i]
+            (update-in op [i] (fnil inc 0)))
+          {}
+          xs))
+
+
+(defn pmf
+  [xs]
+  (let [len (count xs)
+        h (hist xs)]
+    (reduce conj
+            {}
+            (map (fn [[k v]]
+                   [k (float (/ v len))])
+                 h))))
+
+(defn mode
+  [h]
+  (apply max (vals h)))
+
+
+(defn modes
+  [h]
+  (sort-by (comp - val) h))
+
+
+(defn normalize-pmf
+  [p]
+  (let [total (reduce + (vals p))]
+    (if-not (zero? total)
+      (reduce conj
+              {}
+              (map (fn [[k v]]
+                     [k (/ v total)])
+                   p))
+      p)))
+
+;; Ex-6
+(defn pmf-mean
+  [p]
+  (reduce (fn [op [k v]]
+            (+ op (* k v)))
+          0
+          p))
+
+
+(defn pmf-var
+  [p]
+  (let [m (pmf-mean)]
+    (reduce +
+            (map (fn [[k v]]
+                   (* (Math/pow (- k m) 2)
+                      v))
+                 p))))
